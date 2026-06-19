@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กองทุนสำรองเลี้ยงชีพ — เครื่องคำนวณเกษียณ</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0a;
+    --bg2:#121212;
+    --card:#161616;
+    --card2:#1c1c1c;
+    --border:#2a2a2a;
+    --yellow:#ffd23f;
+    --yellow-dim:#a8881f;
+    --yellow-glow: rgba(255,210,63,0.15);
+    --text:#f5f5f0;
+    --text-dim:#9a9a92;
+    --text-faint:#65655e;
+    --green:#4ade80;
+    --green-dim:#1f3a28;
+    --orange:#fb923c;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans Thai','IBM Plex Sans',sans-serif;
+    padding-bottom:60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* Header */
+  header{
+    background: linear-gradient(180deg, #1a1a14 0%, var(--bg) 100%);
+    border-bottom:1px solid var(--border);
+    padding:32px 24px 26px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::before{
+    content:"";
+    position:absolute; top:-60%; right:-10%;
+    width:400px; height:400px;
+    background: radial-gradient(circle, var(--yellow-glow) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .header-inner{max-width:900px; margin:0 auto; position:relative;}
+  .eyebrow{
+    font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--yellow); margin-bottom:8px; font-weight:600;
+    display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow::before{content:"●"; font-size:8px;}
+  h1{font-size:28px; font-weight:800; letter-spacing:-0.01em; margin-bottom:8px;}
+  .subtitle{font-size:13px; color:var(--text-dim); line-height:1.6;}
+
+  .container{max-width:900px; margin:0 auto; padding:28px 20px 0;}
+  .grid{display:flex; gap:20px; flex-wrap:wrap;}
+  .col{flex:1 1 320px; display:flex; flex-direction:column; gap:16px;}
+
+  /* Cards */
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+  }
+  .card-title{
+    font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--yellow); margin-bottom:16px; font-weight:700;
+    display:flex; align-items:center; gap:6px;
+  }
+  .card.past{background:#161410; border-color:#3a331a;}
+  .card.past .card-title{color:var(--yellow);}
+  .card.contrib{background:#161108; border-color:#3a2e10;}
+
+  /* Sliders */
+  .field{margin-bottom:18px;}
+  .field:last-child{margin-bottom:0;}
+  .field-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+  .field-label{font-size:13px; color:var(--text-dim);}
+  .field-value{font-size:16px; font-weight:700; color:var(--text);}
+  .field-value.accent{color:var(--yellow);}
+  .field-note{font-size:11px; color:var(--text-faint); margin-top:5px;}
+
+  input[type=range]{
+    width:100%; height:4px;
+    -webkit-appearance:none; appearance:none;
+    background:var(--border);
+    border-radius:2px; outline:none;
+    cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:18px; height:18px; border-radius:50%;
+    background:var(--yellow);
+    border:3px solid var(--bg);
+    box-shadow:0 0 0 1px var(--yellow);
+    cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px; height:18px; border-radius:50%;
+    background:var(--yellow); border:3px solid var(--bg);
+    box-shadow:0 0 0 1px var(--yellow); cursor:pointer;
+  }
+
+  /* Hero total */
+  .hero{
+    background: linear-gradient(135deg, #1c1808 0%, #2a2008 100%);
+    border:1.5px solid var(--yellow);
+    border-radius:16px;
+    padding:26px 24px;
+    text-align:center;
+    box-shadow: 0 0 40px rgba(255,210,63,0.08);
+  }
+  .hero-label{font-size:11px; color:var(--yellow); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; font-weight:700;}
+  .hero-value{font-size:42px; font-weight:800; color:var(--yellow); line-height:1; letter-spacing:-0.01em;}
+  .hero-sub{font-size:12px; color:var(--text-dim); margin-top:10px;}
+
+  /* Snapshot blocks */
+  .snap{display:flex; gap:12px;}
+  .snap-item{flex:1;}
+  .snap-label{font-size:10px; color:var(--text-faint); margin-bottom:3px; text-transform:uppercase; letter-spacing:0.05em;}
+  .snap-value{font-size:15px; font-weight:700;}
+  .snap-sub{font-size:10px; color:var(--text-faint); margin-top:2px;}
+
+  .big-num{font-size:26px; font-weight:800; margin-bottom:8px;}
+
+  /* KV rows */
+  .kv{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);}
+  .kv:last-child{border-bottom:none;}
+  .kv-k{font-size:12px; color:var(--text-dim);}
+  .kv-v{font-size:13px; font-weight:700;}
+  .kv-v.accent{color:var(--yellow);}
+
+  /* Matching indicator */
+  .match-box{background:#0d0a04; border-radius:10px; padding:12px 14px;}
+  .match-title{font-size:10px; color:var(--yellow-dim); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;}
+  .match-grid{display:flex; gap:10px;}
+  .match-cell{flex:1; background:#161108; border-radius:8px; padding:10px 12px; border:1px solid var(--border);}
+  .match-cell.capped{border-color:rgba(251,146,60,0.4);}
+  .match-cell-label{font-size:10px; color:var(--text-faint); margin-bottom:4px;}
+  .match-cell-value{font-size:19px; font-weight:800; font-family:'IBM Plex Mono',monospace; color:var(--yellow);}
+  .match-cell-value.capped{color:var(--orange);}
+  .match-cell-note{font-size:9.5px; margin-top:4px; color:var(--text-faint);}
+  .match-cell-note.warn{color:var(--orange);}
+
+  /* Table tenure */
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th{padding:7px 12px; color:var(--text-faint); text-align:right; font-weight:600; font-size:9.5px; text-transform:uppercase; letter-spacing:0.04em;}
+  th:first-child, td:first-child{text-align:left;}
+  td{padding:8px 12px; border-top:1px solid var(--border);}
+  .tbl-head{background:#0d0d0d;}
+  tr.now-row{background:#181408;}
+  tr.final-row{background:#14140a;}
+  .badge{font-size:9px; margin-left:5px; padding:1px 5px; border-radius:3px; font-weight:600;}
+  .badge.now{background:var(--green-dim); color:var(--green);}
+  .badge.final{background:#2a2408; color:var(--yellow);}
+  .badge.cap{background:rgba(251,146,60,0.15); color:var(--orange);}
+
+  /* Chart */
+  .chart-wrap{display:flex; align-items:flex-end; gap:4px; height:100px;}
+  .bar-col{flex:1; display:flex; flex-direction:column; align-items:center;}
+  .bar-stack{width:100%; display:flex; flex-direction:column; justify-content:flex-end; height:84px; gap:1px;}
+  .bar-age{font-size:8px; color:var(--text-faint); margin-top:4px;}
+  .legend{display:flex; gap:14px; margin-top:10px; flex-wrap:wrap;}
+  .legend-item{display:flex; align-items:center; gap:5px; font-size:10px; color:var(--text-dim);}
+  .legend-dot{width:10px; height:10px; border-radius:2px;}
+
+  /* Toggle button */
+  .toggle-btn{
+    background:transparent; border:1px solid var(--border); border-radius:8px;
+    color:var(--yellow); cursor:pointer; padding:11px 18px; font-size:12px;
+    letter-spacing:0.06em; text-transform:uppercase; font-family:inherit; font-weight:600;
+    width:100%; transition:all .15s;
+  }
+  .toggle-btn:hover{border-color:var(--yellow); background:rgba(255,210,63,0.05);}
+
+  .table-scroll{max-height:380px; overflow:auto; border-radius:12px;}
+  .table-scroll::-webkit-scrollbar{width:6px; height:6px;}
+  .table-scroll::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+
+  .footer-note{
+    margin-top:28px; padding:16px 18px; background:var(--card);
+    border-radius:10px; border:1px solid var(--border);
+    font-size:11px; color:var(--text-faint); line-height:1.9;
+  }
+  .footer-note strong{color:var(--yellow);}
+  .footer-note .hl{color:var(--text);}
+
+  .rate-dot{
+    font-size:10px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace;
+    transition: color .15s;
+  }
+  .rate-dot.active{ color:var(--yellow); }
+
+  @media(max-width:640px){
+    h1{font-size:22px;}
+    .hero-value{font-size:32px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="eyebrow">กองทุนสำรองเลี้ยงชีพ · Provident Fund Calculator</div>
+    <h1>ตัวอย่างการคำนวณ เพื่อการเกษียณ</h1>
+    <div class="subtitle">อัตราสมทบบริษัทตาม tenure · บริษัทสมทบสูงสุดไม่เกินที่พนักงานจ่าย · ทบต้นรายเดือน</div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="grid">
+
+    <!-- LEFT COLUMN -->
+    <div class="col">
+
+      <!-- Past -->
+      <div class="card past">
+        <div class="card-title">📂 อดีต — สะสมมาแล้ว</div>
+        <div class="field">
+          <div class="field-head">
+            <span class="field-label">อายุงานปัจจุบัน</span>
+            <span class="field-value accent" id="val-pastYears">10 ปี</span>
+          </div>
+          <input type="range" id="pastYears" min="0" max="35" step="1" value="10">
+          <div class="field-note" id="note-pastYears"></div>
+        </div>
+      </div>
+
+      <!-- Personal -->
+      <div class="card">
+        <div class="card-title">👤 ข้อมูลส่วนตัว</div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">อายุปัจจุบัน</span><span class="field-value" id="val-age">36 ปี</span></div>
+          <input type="range" id="age" min="22" max="60" step="1" value="36">
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">เงินเดือนปัจจุบัน</span><span class="field-value" id="val-salary">฿59,000</span></div>
+          <input type="range" id="salary" min="15000" max="300000" step="1000" value="59000">
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">เงินเดือนขึ้นต่อปี</span><span class="field-value" id="val-salaryGrowth">5%</span></div>
+          <input type="range" id="salaryGrowth" min="0" max="15" step="0.5" value="5">
+          <div class="field-note">สมมติขึ้นสม่ำเสมอต้นปี</div>
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">อายุเกษียณ</span><span class="field-value" id="val-retireAge">55 ปี</span></div>
+          <input type="range" id="retireAge" min="40" max="65" step="1" value="55">
+          <div class="field-note" id="note-retireAge"></div>
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">ผลตอบแทนกองทุนต่อปี</span><span class="field-value" id="val-returnRate">5%</span></div>
+          <input type="range" id="returnRate" min="1" max="12" step="0.5" value="5">
+          <div class="field-note">ทบต้นรายเดือน</div>
+        </div>
+      </div>
+
+      <!-- Contribution -->
+      <div class="card contrib">
+        <div class="card-title">💰 อัตราการสมทบ</div>
+        <div class="field">
+          <div class="field-head">
+            <span class="field-label">พนักงานสะสม (% ของเงินเดือน)</span>
+            <span class="field-value accent" id="val-empRate">10%</span>
+          </div>
+          <input type="range" id="empRate" min="2" max="15" step="1" value="10">
+          <!-- step dots 2–15 -->
+          <div style="display:flex; justify-content:space-between; margin-top:4px; padding:0 1px;">
+            <span id="dot-2"  class="rate-dot">2</span>
+            <span id="dot-5"  class="rate-dot">5</span>
+            <span id="dot-10" class="rate-dot">10</span>
+            <span id="dot-15" class="rate-dot" style="color:var(--yellow); font-weight:700;">15<span style="font-size:8px; margin-left:1px;">★</span></span>
+          </div>
+          <div style="margin-top:8px; background:#1c1408; border:1px solid #3a2a10; border-radius:8px; padding:8px 12px; font-size:11px; line-height:1.7; color:var(--text-dim);">
+            <span style="color:var(--yellow); font-weight:700;">กฎ:</span>
+            พนักงานเลือกได้ <span style="color:var(--text);">2%–15%</span> ของเงินเดือน ·
+            บริษัทสมทบสูงสุดไม่เกิน <span style="color:var(--text);">% ที่พนักงานจ่าย</span>
+            และไม่เกิน schedule ตาม tenure<br>
+            <span id="emp-rate-tip" style="color:var(--yellow);"></span>
+          </div>
+        </div>
+        <div class="match-box" style="margin-top:4px;">
+          <div class="match-title">อัตราสมทบจริงของบริษัท</div>
+          <div class="match-grid">
+            <div class="match-cell" id="cell-now">
+              <div class="match-cell-label" id="cell-now-label">ณ ปัจจุบัน</div>
+              <div class="match-cell-value" id="cell-now-value">9%</div>
+              <div class="match-cell-note" id="cell-now-note"></div>
+            </div>
+            <div class="match-cell" id="cell-final">
+              <div class="match-cell-label" id="cell-final-label">เมื่อเกษียณ</div>
+              <div class="match-cell-value" id="cell-final-value">10%</div>
+              <div class="match-cell-note" id="cell-final-note"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tenure table -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:16px 20px 12px; display:flex; justify-content:space-between; align-items:center;">
+          <span class="card-title" style="margin-bottom:0;">ตาราง Tenure</span>
+          <span style="font-size:10px; color:var(--yellow-dim);">สมทบจริง = min(schedule, emp%)</span>
+        </div>
+        <table>
+          <thead class="tbl-head">
+            <tr><th>ช่วงอายุงาน</th><th>Schedule</th><th>สมทบจริง</th></tr>
+          </thead>
+          <tbody id="tenure-table-body"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col">
+
+      <div class="hero">
+        <div class="hero-label">มูลค่ารวมเมื่อเกษียณอายุ <span id="hero-retireAge">55</span> ปี</div>
+        <div class="hero-value mono" id="hero-total">฿0</div>
+        <div class="hero-sub" id="hero-sub"></div>
+      </div>
+
+      <div class="card" style="background:#0c1208; border-color:#1f3a1a;">
+        <div class="card-title" style="color:var(--green);">📂 กองทุนที่มีอยู่แล้ว ณ วันนี้</div>
+        <div class="big-num mono" style="color:var(--green);" id="now-total">฿0</div>
+        <div class="snap">
+          <div class="snap-item">
+            <div class="snap-label">ส่วนพนักงาน</div>
+            <div class="snap-value mono" id="now-emp">฿0</div>
+            <div class="snap-sub" id="now-emp-sub"></div>
+          </div>
+          <div class="snap-item">
+            <div class="snap-label">ส่วนบริษัทสมทบ</div>
+            <div class="snap-value mono" style="color:var(--green);" id="now-comp">฿0</div>
+            <div class="snap-sub" id="now-comp-sub"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚀 ส่วนที่จะสะสมเพิ่มอีก <span id="future-years">19</span> ปี</div>
+        <div class="snap">
+          <div class="snap-item">
+            <div class="snap-label">พนักงานจ่ายเพิ่ม</div>
+            <div class="snap-value mono" id="fut-emp">฿0</div>
+          </div>
+          <div class="snap-item">
+            <div class="snap-label">บริษัทสมทบเพิ่ม</div>
+            <div class="snap-value mono" style="color:var(--yellow);" id="fut-comp">฿0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">สรุป</div>
+        <div id="summary-kvs"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">การเติบโตตลอดอาชีพ</div>
+        <div class="chart-wrap" id="chart"></div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3a3318;"></div>พนักงาน (อดีต)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#5c5026;"></div>บริษัท (อดีต)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#7a6a1f;"></div>พนักงาน (อนาคต)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ffd23f;"></div>บริษัท (อนาคต)</div>
+        </div>
+      </div>
+
+      <button class="toggle-btn" id="toggle-table">▼ แสดงตารางรายปีทั้งหมด</button>
+
+      <div class="card table-scroll" id="full-table-wrap" style="display:none; padding:0;">
+        <table>
+          <thead class="tbl-head" style="position:sticky; top:0;">
+            <tr>
+              <th>อายุ</th><th>ปีงาน</th><th>เงินเดือน</th><th>สะสม(emp)</th>
+              <th>สมทบ(co)</th><th>Sched.</th><th>Actual%</th><th>กองทุนรวม</th>
+            </tr>
+          </thead>
+          <tbody id="full-table-body"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <strong>กฎการสมทบ:</strong> <span class="hl">อัตราสมทบจริงของบริษัท = min(อัตรา schedule ตาม tenure, % ที่พนักงานเลือกสะสม)</span><br>
+    ตัวอย่าง: พนักงานสะสม 5% · tenure ≥ 20 ปี schedule = 13% → บริษัทจ่ายได้แค่ 5% (ถูก cap) ·
+    พนักงานสะสม 10% · tenure ≥ 20 ปี → บริษัทจ่าย 10% (ไม่ถูก cap) ·
+    ย้อนคำนวณเงินเดือนเริ่มต้น = เงินเดือนปัจจุบัน ÷ (1+g)ⁿ · ทบต้นรายเดือน
+  </div>
+</div>
+
+<script>
+const COMPANY_SCHEDULE = [
+  { label:"< 2 ปี",   min:0,  max:2,        rate:0.05 },
+  { label:"2–5 ปี",   min:2,  max:5,        rate:0.07 },
+  { label:"5–10 ปี",  min:5,  max:10,       rate:0.09 },
+  { label:"10–15 ปี", min:10, max:15,       rate:0.10 },
+  { label:"15–20 ปี", min:15, max:20,       rate:0.11 },
+  { label:"≥ 20 ปี",  min:20, max:Infinity, rate:0.13 },
+];
+
+function scheduleRate(years){
+  const row = COMPANY_SCHEDULE.find(r => years >= r.min && years < r.max);
+  return row ? row.rate : 0.13;
+}
+function effectiveCompanyRate(years, empRatePct){
+  return Math.min(scheduleRate(years), empRatePct/100);
+}
+function fmt(n){
+  return n.toLocaleString('th-TH', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function simulateYear(empFund, compFund, monthlySalary, empRateFrac, compRateFrac, annualReturnPct){
+  const mRate = annualReturnPct/100/12;
+  for(let m=0;m<12;m++){
+    empFund  = (empFund  + monthlySalary*empRateFrac)  * (1+mRate);
+    compFund = (compFund + monthlySalary*compRateFrac) * (1+mRate);
+  }
+  return {empFund, compFund};
+}
+
+const els = {};
+['pastYears','age','salary','salaryGrowth','empRate','retireAge','returnRate'].forEach(id=>{
+  els[id] = document.getElementById(id);
+});
+
+function getState(){
+  return {
+    pastYears: +els.pastYears.value,
+    age: +els.age.value,
+    salary: +els.salary.value,
+    salaryGrowth: +els.salaryGrowth.value,
+    empRate: +els.empRate.value,
+    retireAge: +els.retireAge.value,
+    returnRate: +els.returnRate.value,
+  };
+}
+
+function calculate(s){
+  const yearsLeft = s.retireAge - s.age;
+  if(yearsLeft <= 0) return null;
+  const totalCareer = s.pastYears + yearsLeft;
+  const startSalary = s.salary / Math.pow(1 + s.salaryGrowth/100, s.pastYears);
+
+  let empFund=0, compFund=0;
+  let empPastContrib=0, compPastContrib=0;
+  const allYears=[];
+
+  let sal = startSalary;
+  for(let y=0;y<s.pastYears;y++){
+    const compRate = effectiveCompanyRate(y, s.empRate);
+    const r = simulateYear(empFund, compFund, sal, s.empRate/100, compRate, s.returnRate);
+    empPastContrib += sal*12*(s.empRate/100);
+    compPastContrib += sal*12*compRate;
+    empFund = r.empFund; compFund = r.compFund;
+    allYears.push({
+      age: s.age - s.pastYears + y + 1, careerYear:y+1, salary:Math.round(sal),
+      empContrib:Math.round(sal*12*(s.empRate/100)), compContrib:Math.round(sal*12*compRate),
+      scheduleRate:scheduleRate(y), actualCompRate:compRate,
+      empFund:Math.round(empFund), compFund:Math.round(compFund),
+      totalFund:Math.round(empFund+compFund), phase:'past'
+    });
+    sal *= 1 + s.salaryGrowth/100;
+  }
+  const fundAtNow = {emp:empFund, comp:compFund};
+
+  let empFutContrib=0, compFutContrib=0;
+  for(let y=0;y<yearsLeft;y++){
+    const careerY = s.pastYears + y;
+    const compRate = effectiveCompanyRate(careerY, s.empRate);
+    const r = simulateYear(empFund, compFund, sal, s.empRate/100, compRate, s.returnRate);
+    empFutContrib += sal*12*(s.empRate/100);
+    compFutContrib += sal*12*compRate;
+    empFund = r.empFund; compFund = r.compFund;
+    allYears.push({
+      age:s.age+y+1, careerYear:careerY+1, salary:Math.round(sal),
+      empContrib:Math.round(sal*12*(s.empRate/100)), compContrib:Math.round(sal*12*compRate),
+      scheduleRate:scheduleRate(careerY), actualCompRate:compRate,
+      empFund:Math.round(empFund), compFund:Math.round(compFund),
+      totalFund:Math.round(empFund+compFund), phase:'future'
+    });
+    sal *= 1 + s.salaryGrowth/100;
+  }
+
+  const totalContrib = empPastContrib+compPastContrib+empFutContrib+compFutContrib;
+  return {
+    startSalary:Math.round(startSalary), lastSalary:Math.round(sal/(1+s.salaryGrowth/100)),
+    fundAtNow, empPastContrib:Math.round(empPastContrib), compPastContrib:Math.round(compPastContrib),
+    empFutContrib:Math.round(empFutContrib), compFutContrib:Math.round(compFutContrib),
+    empFund:Math.round(empFund), compFund:Math.round(compFund),
+    totalFund:Math.round(empFund+compFund), totalContrib:Math.round(totalContrib),
+    gain:Math.round(empFund+compFund-totalContrib), allYears, yearsLeft, totalCareer
+  };
+}
+
+let showTable = false;
+
+function render(){
+  const s = getState();
+  const yearsLeft = s.retireAge - s.age;
+  const totalCareer = s.pastYears + yearsLeft;
+
+  // Update field labels
+  document.getElementById('val-pastYears').textContent = s.pastYears + ' ปี';
+  document.getElementById('val-age').textContent = s.age + ' ปี';
+  document.getElementById('val-salary').textContent = '฿' + fmt(s.salary);
+  document.getElementById('val-salaryGrowth').textContent = s.salaryGrowth + '%';
+  document.getElementById('val-retireAge').textContent = s.retireAge + ' ปี';
+  document.getElementById('val-returnRate').textContent = s.returnRate + '%';
+  document.getElementById('val-empRate').textContent = s.empRate + '%';
+
+  // dot highlights
+  [2,5,10,15].forEach(v=>{
+    const el = document.getElementById('dot-'+v);
+    if(el) el.classList.toggle('active', v === s.empRate);
+  });
+
+  // tip text
+  const tipEl = document.getElementById('emp-rate-tip');
+  if(s.empRate === 15){
+    tipEl.textContent = '★ สะสมสูงสุด — ได้รับเงินสมทบจากบริษัทสูงสุดตาม schedule tenure';
+  } else {
+    const missing = 15 - s.empRate;
+    tipEl.textContent = `💡 เพิ่มอีก ${missing}% → ได้รับสิทธิ์สมทบบริษัทสูงขึ้นตาม tenure`;
+  }
+  document.getElementById('note-retireAge').textContent = yearsLeft > 0 ? `เหลือ ${yearsLeft} ปี · อายุงานรวม ${totalCareer} ปี` : 'อายุเกษียณต้องมากกว่าอายุปัจจุบัน';
+
+  if(yearsLeft <= 0){
+    document.getElementById('note-pastYears').textContent='';
+    return;
+  }
+
+  const r = calculate(s);
+
+  document.getElementById('note-pastYears').textContent = `เงินเดือนตอนเริ่มงาน ≈ ฿${fmt(r.startSalary)}`;
+
+  // Matching indicator
+  const nowComp = effectiveCompanyRate(s.pastYears, s.empRate);
+  const finalComp = effectiveCompanyRate(totalCareer-1, s.empRate);
+  const nowSched = scheduleRate(s.pastYears);
+  const finalSched = scheduleRate(totalCareer-1);
+  const empFrac = s.empRate/100;
+  const isCapNow = empFrac < nowSched;
+  const isCapFinal = empFrac < finalSched;
+
+  document.getElementById('cell-now-label').textContent = `ณ ปัจจุบัน (${s.pastYears} ปีงาน)`;
+  document.getElementById('cell-now-value').textContent = (nowComp*100).toFixed(0)+'%';
+  document.getElementById('cell-now-value').className = 'match-cell-value' + (isCapNow ? ' capped' : '');
+  document.getElementById('cell-now').className = 'match-cell' + (isCapNow ? ' capped' : '');
+  document.getElementById('cell-now-note').innerHTML = isCapNow
+    ? `⚠ ถูก cap จาก ${(nowSched*100).toFixed(0)}% → ${s.empRate}%`
+    : `ตาม schedule ${(nowSched*100).toFixed(0)}% ✓`;
+  document.getElementById('cell-now-note').className = 'match-cell-note' + (isCapNow ? ' warn' : '');
+
+  document.getElementById('cell-final-label').textContent = `เมื่อเกษียณ (${totalCareer} ปีงาน)`;
+  document.getElementById('cell-final-value').textContent = (finalComp*100).toFixed(0)+'%';
+  document.getElementById('cell-final-value').className = 'match-cell-value' + (isCapFinal ? ' capped' : '');
+  document.getElementById('cell-final').className = 'match-cell' + (isCapFinal ? ' capped' : '');
+  document.getElementById('cell-final-note').innerHTML = isCapFinal
+    ? `⚠ ถูก cap จาก ${(finalSched*100).toFixed(0)}% → ${s.empRate}%`
+    : `ตาม schedule ${(finalSched*100).toFixed(0)}% ✓`;
+  document.getElementById('cell-final-note').className = 'match-cell-note' + (isCapFinal ? ' warn' : '');
+
+  // Tenure table
+  const tbody = document.getElementById('tenure-table-body');
+  tbody.innerHTML = COMPANY_SCHEDULE.map(row=>{
+    const actual = Math.min(row.rate, s.empRate/100);
+    const capped = actual < row.rate;
+    const nowActive = s.pastYears >= row.min && s.pastYears < row.max;
+    const finalActive = (totalCareer-1) >= row.min && (totalCareer-1) < row.max;
+    let cls = '';
+    if(nowActive) cls='now-row'; else if(finalActive) cls='final-row';
+    return `<tr class="${cls}">
+      <td>${row.label}</td>
+      <td class="mono" style="text-align:right;">${(row.rate*100).toFixed(0)}%</td>
+      <td class="mono" style="text-align:right; color:${capped?'var(--orange)':'var(--yellow)'}; font-weight:700;">
+        ${(actual*100).toFixed(0)}%
+        ${capped?'<span class="badge cap">cap</span>':''}
+        ${nowActive?'<span class="badge now">ตอนนี้</span>':''}
+        ${(!nowActive && finalActive)?'<span class="badge final">เกษียณ</span>':''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Hero
+  document.getElementById('hero-retireAge').textContent = s.retireAge;
+  document.getElementById('hero-total').textContent = '฿' + fmt(r.totalFund);
+  document.getElementById('hero-sub').textContent = `ผลตอบแทน +฿${fmt(r.gain)} · ${((r.gain/r.totalContrib)*100).toFixed(1)}% บนเงินสมทบทั้งหมด`;
+
+  // Now snapshot
+  document.getElementById('now-total').textContent = '฿' + fmt(r.fundAtNow.emp + r.fundAtNow.comp);
+  document.getElementById('now-emp').textContent = '฿' + fmt(r.fundAtNow.emp);
+  document.getElementById('now-emp-sub').textContent = `จ่ายไป ฿${fmt(r.empPastContrib)}`;
+  document.getElementById('now-comp').textContent = '฿' + fmt(r.fundAtNow.comp);
+  document.getElementById('now-comp-sub').textContent = `สมทบไป ฿${fmt(r.compPastContrib)}`;
+
+  // Future
+  document.getElementById('future-years').textContent = yearsLeft;
+  document.getElementById('fut-emp').textContent = '฿' + fmt(r.empFutContrib);
+  document.getElementById('fut-comp').textContent = '฿' + fmt(r.compFutContrib);
+
+  // Summary KVs
+  const kvs = [
+    ['เงินเดือนตอนเริ่มงาน (ย้อนคำนวณ)', '฿'+fmt(r.startSalary), false],
+    ['เงินเดือนสุดท้ายก่อนเกษียณ', '฿'+fmt(r.lastSalary), false],
+    ['อายุงานรวม', totalCareer+' ปี', false],
+    ['สมทบพนักงานรวมตลอดอาชีพ', '฿'+fmt(r.empPastContrib+r.empFutContrib), false],
+    ['สมทบบริษัทรวมตลอดอาชีพ', '฿'+fmt(r.compPastContrib+r.compFutContrib), false],
+    ['ผลตอบแทนจากการลงทุนรวม', '฿'+fmt(r.gain), true],
+  ];
+  document.getElementById('summary-kvs').innerHTML = kvs.map(([k,v,acc])=>
+    `<div class="kv"><span class="kv-k">${k}</span><span class="kv-v mono ${acc?'accent':''}">${v}</span></div>`
+  ).join('');
+
+  // Chart
+  const all = r.allYears;
+  const step = Math.max(1, Math.floor(all.length/14));
+  let bars = all.filter((_,i)=> i%step===0 || i===all.length-1).slice(0,16);
+  const maxV = bars[bars.length-1].totalFund;
+  document.getElementById('chart').innerHTML = bars.map(row=>{
+    const past = row.phase==='past';
+    const eH = Math.max(3, (row.empFund/maxV)*80);
+    const cH = Math.max(2, (row.compFund/maxV)*80);
+    const empColor = past ? '#3a3318' : '#7a6a1f';
+    const compColor = past ? '#5c5026' : '#ffd23f';
+    return `<div class="bar-col">
+      <div class="bar-stack">
+        <div style="background:${compColor}; border-radius:2px 2px 0 0; height:${cH}px;"></div>
+        <div style="background:${empColor}; height:${eH}px;"></div>
+      </div>
+      <div class="bar-age">${row.age}</div>
+    </div>`;
+  }).join('');
+
+  // Full table
+  const tb = document.getElementById('full-table-body');
+  tb.innerHTML = all.map((row,i)=>{
+    const past = row.phase==='past';
+    const capped = row.actualCompRate < row.scheduleRate;
+    const isBorder = !past && all[i-1] && all[i-1].phase==='past';
+    return `<tr style="${isBorder?'border-top:2px solid var(--yellow);':''} background:${past?'#0d0c08':(i%2===0?'transparent':'#111')};">
+      <td style="text-align:right; color:${past?'var(--yellow-dim)':'var(--text-dim)'};">${row.age}</td>
+      <td style="text-align:right; color:${past?'var(--yellow-dim)':'var(--text-dim)'};">${row.careerYear}</td>
+      <td style="text-align:right;">${fmt(row.salary)}</td>
+      <td style="text-align:right;">${fmt(row.empContrib)}</td>
+      <td style="text-align:right; color:${past?'var(--green)':'var(--yellow)'};">${fmt(row.compContrib)}</td>
+      <td style="text-align:right; color:var(--text-faint);">${(row.scheduleRate*100).toFixed(0)}%</td>
+      <td style="text-align:right; font-weight:700; color:${capped?'var(--orange)':(past?'var(--green)':'var(--yellow)')};">${(row.actualCompRate*100).toFixed(0)}%${capped?' ⚠':''}</td>
+      <td style="text-align:right; font-weight:700;">${fmt(row.totalFund)}</td>
+    </tr>`;
+  }).join('');
+}
+
+Object.values(els).forEach(el => el.addEventListener('input', render));
+
+document.getElementById('toggle-table').addEventListener('click', ()=>{
+  showTable = !showTable;
+  document.getElementById('full-table-wrap').style.display = showTable ? 'block' : 'none';
+  document.getElementById('toggle-table').textContent = showTable ? '▲ ซ่อนตารางรายปี' : '▼ แสดงตารางรายปีทั้งหมด';
+});
+
+render();
+</script>
+</body>
+</html>
